@@ -10,6 +10,8 @@ or an authority. It runs on your own machine, works offline and needs no account
 
 It never says go or no-go. It gathers the evidence; the pilot and the authority decide.
 
+![The airspace check for a survey area near Bengaluru](docs/images/airspace.jpg)
+
 ## What it checks
 
 | | |
@@ -25,6 +27,12 @@ It never says go or no-go. It gathers the evidence; the pilot and the authority 
 | **Flight audit** | A flown track (GPX, KML, CSV or a FlightMD report) against the ground, the zones and the training area |
 
 Most checks can also run once per feature: 200 farm plots give 200 rows and a CSV.
+
+<p>
+  <img src="docs/images/ground-risk.jpg" alt="Ground risk: the operational volume over the population" width="32%">
+  <img src="docs/images/flight-audit.jpg" alt="Flight audit of a GPX track against the training area" width="32%">
+  <img src="docs/images/brief.jpg" alt="The one-page evidence brief" width="32%">
+</p>
 
 ## Try it
 

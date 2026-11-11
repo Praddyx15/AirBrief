@@ -187,6 +187,20 @@ npm run verify -- flightmd            # or rollout, rollout-4x5
 - `FLIGHTMD_URL` and `FLIGHTMD_REPO_URL` override FlightMD's address and its repository link.
 - A story's `PACKS` names the data packs it shows; only their sources go on the end card.
 
+## The tutorial and the README screenshots
+
+`tutorial.mjs` is a one-minute walkthrough for new users: load a file, measure, check the airspace
+and the ground, make the brief, and the no-file way in (`node record.mjs --story tutorial`; it
+uploads `samples/modules/bengaluru_survey.kml`, so run `python -m seed.samples --dest samples/`
+first). For the repository page, make a 720p copy GitHub can play (under 10 MB) and drag it into
+the README in GitHub's editor:
+
+```bash
+ffmpeg -i out/tutorial.mp4 -vf scale=1280:-2 -c:v libx264 -crf 25 -c:a aac -b:a 128k -movflags +faststart out/tutorial-github.mp4
+```
+
+`node screenshots.mjs` retakes the four images in `docs/images/` from the running app.
+
 ## How it works
 
 ```

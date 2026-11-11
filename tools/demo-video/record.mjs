@@ -10,6 +10,7 @@
  *   node record.mjs --story teaser  the 30-40 s teaser (teaser.mjs) → out/teaser.mp4; works with --draft and --only
  *   node record.mjs --story flightmd  FlightMD and AirBrief on one flight (flightmd.mjs) → out/flightmd.mp4
  *   node record.mjs --story rollout   the link between them, click by click (rollout.mjs) → out/rollout.mp4
+ *   node record.mjs --story tutorial  getting started: load, check, brief (tutorial.mjs) → out/tutorial.mp4
  *   node record.mjs --format 4x5    1080×1350 portrait (config.mjs formats) → out/<name>-4x5.mp4
  *
  * Needs: the API and web app running (RUNBOOK §2) with a data pack, ffmpeg on PATH, and the
@@ -25,6 +26,7 @@ import * as demo from "./scenes.mjs";
 import * as flightmd from "./flightmd.mjs";
 import * as rollout from "./rollout.mjs";
 import * as teaser from "./teaser.mjs";
+import * as tutorial from "./tutorial.mjs";
 import { dataNote, loadSample, preflight } from "./lib/app.mjs";
 import { assemble } from "./lib/assemble.mjs";
 import { encodeClip } from "./lib/capture.mjs";
@@ -33,7 +35,7 @@ import { installOverlay } from "./lib/overlay.mjs";
 import { Stage } from "./lib/stage.mjs";
 import { synthesizeAll } from "./lib/tts.mjs";
 
-const STORIES = { demo, teaser, flightmd, rollout };
+const STORIES = { demo, teaser, flightmd, rollout, tutorial };
 
 function parseArgs(argv) {
   const args = { draft: false, only: null, music: undefined, story: "demo" };

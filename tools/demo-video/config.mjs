@@ -97,6 +97,8 @@ export const CONFIG = {
   // (rollout.mjs): the link between them, click by click, for a feature announcement
   flightmd: { minSeconds: 50, maxSeconds: 110, ...withFlightmd() },
   rollout: { minSeconds: 50, maxSeconds: 100, ...withFlightmd() },
+  // --story tutorial (tutorial.mjs): the first two minutes, for a new user
+  tutorial: { minSeconds: 60, maxSeconds: 150 },
 
   // --format 4x5: portrait for the LinkedIn feed. 1080 CSS px at 1x keeps the desktop layout;
   // below 1024 px the app switches to its tablet layout, which hides the module panel.
