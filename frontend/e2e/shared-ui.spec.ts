@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Request } from "@playwright/test";
 import { expectNoSeriousA11yViolations, openSample } from "./helpers";
 
 /**
@@ -8,6 +8,12 @@ import { expectNoSeriousA11yViolations, openSample } from "./helpers";
  */
 
 const rail = (page: Page) => page.getByRole("navigation", { name: "Workspace modules" });
+
+/** A dialog listens for Escape once it holds the focus; on a busy CI runner that comes a moment
+ * after it is visible, and an Escape pressed in between is lost. */
+async function focusedInside(dialog: Locator): Promise<void> {
+  await expect.poll(() => dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+}
 /** The Airspace module's form (the Survey panel shown before it has its own "Height above ground"). */
 const airspaceForm = (page: Page) => page.getByRole("form", { name: "Airspace check" });
 const heightField = (page: Page) => airspaceForm(page).getByRole("spinbutton", { name: /^Height above ground/ });
@@ -34,6 +40,7 @@ test.describe("dialogs", () => {
     await page.keyboard.press("Enter");
     const shortcuts = page.getByRole("dialog", { name: "Keyboard shortcuts" });
     await expect(shortcuts).toBeVisible();
+    await focusedInside(shortcuts);
     await page.keyboard.press("Escape");
     await expect(shortcuts).toBeHidden();
     await expect(shortcutsButton).toBeFocused();
@@ -43,6 +50,7 @@ test.describe("dialogs", () => {
     await page.keyboard.press("Control+K");
     const palette = page.getByRole("dialog", { name: "Command palette" });
     await expect(palette).toBeVisible();
+    await focusedInside(palette);
     await page.keyboard.press("Escape");
     await expect(palette).toBeHidden();
     await expect(zoomIn).toBeFocused();

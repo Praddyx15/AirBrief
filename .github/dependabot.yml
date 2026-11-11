@@ -16,6 +16,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # major versions (Next, Tailwind, ESLint, TypeScript, ...) are migrations: done by hand, one at a time
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       frontend:
         patterns: ["*"]
