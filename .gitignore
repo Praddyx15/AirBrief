@@ -1,0 +1,86 @@
+# Local runtime data (database, uploads, data packs); anchored, so airbrief_core/data/ stays in
+/data/
+*.db
+*.db-journal
+*.sqlite3
+
+# Generated binary/large samples (rebuild with: python -m seed.samples --dest samples/)
+samples/*.zip
+samples/**/*.zip
+samples/**/*.kmz
+samples/**/*.large.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+wheelhouse/
+.venv/
+venv/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+htmlcov/
+
+# Native kernel build output
+native/build/
+native/_skbuild/
+*.so
+*.pyd
+*.dylib
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.site/
+tools/demo-video/.bin/
+frontend/public/vendor/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+frontend/public/demo/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
+# Secrets and local config
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+!secrets.md
+# brief signing key (BRIEF_SIGNING_KEY_FILE), e.g. brief-signing-key.pem or one with no extension
+*signing-key*
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker files are not part of this repo (see DOCKER.md).
+# If you create them locally from DOCKER.md, keep them out of commits:
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+compose.yml
+compose.*.yml
+.dockerignore

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+<name>1 km square at 60°N</name>
+<Placemark><name>1 km square at 60°N</name><description>Corners laid out at ±500 m on a Lambert Azimuthal Equal-Area projection centred on (10, 60) and stored as lon/lat. Expected area 1,000,000 m².</description><ExtendedData><Data name="side_m"><value>1000</value></Data><Data name="expected_area_m2"><value>1000000</value></Data><Data name="expected_perimeter_m"><value>4000</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>9.991040640,59.995511860 10.008959360,59.995511860 10.008961786,60.004487531 9.991038214,60.004487531 9.991040640,59.995511860</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+</Document>
+</kml>

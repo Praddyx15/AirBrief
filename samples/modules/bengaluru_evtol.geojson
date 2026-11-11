@@ -1,0 +1,68 @@
+{
+  "type": "FeatureCollection",
+  "name": "bengaluru_evtol",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Study area",
+        "role": "study_area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.63,
+              12.805
+            ],
+            [
+              77.79,
+              12.805
+            ],
+            [
+              77.79,
+              13.01
+            ],
+            [
+              77.63,
+              13.01
+            ],
+            [
+              77.63,
+              12.805
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Whitefield",
+        "role": "origin"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.75,
+          12.97
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Electronic City",
+        "role": "destination"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.67,
+          12.845
+        ]
+      }
+    }
+  ]
+}

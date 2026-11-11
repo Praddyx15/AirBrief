@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+// Measurements of uploaded features (AirBrief Tier 0).
+//
+// Mirrors airbrief_core.models.features.Measurement and FeatureRecord. Lengths are metres and
+// areas are square metres. Values are computed in per-feature local projections: Lambert Azimuthal
+// Equal-Area for area, Transverse Mercator with k0 = 1 for lengths, and cross-checked against the
+// WGS84 geodesic (Karney).
+package uaop.airspace.v1;
+
+// Outcome of measuring one feature.
+enum MeasurementStatus {
+  MEASUREMENT_STATUS_UNSPECIFIED = 0;
+  // Measured successfully.
+  MEASUREMENT_STATUS_MEASURED = 1;
+  // Points and multipoints: nothing to measure.
+  MEASUREMENT_STATUS_NOT_APPLICABLE = 2;
+  // Geometry kind AirBrief cannot measure (e.g. KML Model, shapefile MultiPatch).
+  MEASUREMENT_STATUS_UNSUPPORTED = 3;
+  // Empty geometry or unknown CRS.
+  MEASUREMENT_STATUS_SKIPPED = 4;
+  // Unexpected failure for this one feature; the others continue.
+  MEASUREMENT_STATUS_ERROR = 5;
+}
+
+// Measurement of one feature (Python: Measurement).
+message Measurement {
+  MeasurementStatus status = 1;
+  // Human-readable reason when not measured.
+  optional string reason = 2;
+  // Area in m2 (Python: area_m2), from the local LAEA projection.
+  optional double area_sq_m = 3;
+  // Perimeter in m (Python: perimeter_m), from the local TM projection.
+  optional double perimeter_m = 4;
+  // 2D length in m (Python: length_m).
+  optional double length_m = 5;
+  // 3D length in m when Z values are present (Python: length_3d_m).
+  optional double length_with_z_m = 6;
+  // Geodesic ground truth (Python: geodesic_area_m2, geodesic_perimeter_m, geodesic_length_m).
+  optional double geodesic_area_sq_m = 7;
+  optional double geodesic_perimeter_m = 8;
+  optional double geodesic_length_m = 9;
+  // Largest absolute relative difference between projected and geodesic values, in percent.
+  optional double deviation_pct = 10;
+  // Size in the source grid; only for projected inputs (Python: grid_area_m2, grid_length_m).
+  optional double grid_area_sq_m = 11;
+  optional double grid_length_m = 12;
+  // Method label, e.g. "local-projection".
+  optional string method = 13;
+  // PROJ strings of the measurement projections.
+  optional string area_crs = 14;
+  optional string length_crs = 15;
+  // UTM zone for human context only (Python: utm_epsg, utm_zone).
+  optional int32 utm_epsg = 16;
+  optional string utm_zone = 17;
+  // True when an invalid polygon was repaired with make_valid before measuring.
+  bool repaired = 18;
+  // True when the source geometry carried Z values.
+  bool has_z = 19;
+  // Component counts by geometry type for collections, e.g. {"Polygon": 2}.
+  map<string, int32> parts = 20;
+}
+
+// One feature with its measurement (Python: FeatureRecord, without the geometry payload).
+message FeatureMeasurement {
+  // Zero-based index of the feature in the dataset.
+  int32 feature_index = 1;
+  string layer = 2;
+  optional string fid = 3;
+  optional string name = 4;
+  // GeoJSON geometry type name, e.g. "Polygon".
+  string geometry_type = 5;
+  // Source CRS label, e.g. "EPSG:32643"; empty when unknown.
+  optional string crs = 6;
+  Measurement measurement = 7;
+}
+
+// Totals across a dataset (Python: MeasurementTotals).
+message MeasurementTotals {
+  int32 feature_count = 1;
+  int32 measured = 2;
+  int32 not_applicable = 3;
+  int32 unsupported = 4;
+  int32 skipped = 5;
+  int32 error = 6;
+  double area_sq_m = 7;
+  double perimeter_m = 8;
+  double length_m = 9;
+  double length_with_z_m = 10;
+}

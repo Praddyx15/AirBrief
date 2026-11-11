@@ -1,0 +1,31 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2,<3"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "airbrief-native"
+version = "0.1.0"
+description = "Optional C++17 kernel for AirBrief: drone-show separation sweeps and point-in-polygon tests."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "AirBrief contributors" }]
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.24"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+[project.urls]
+Homepage = "https://github.com/Praddyx15/AirBrief"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+wheel.packages = ["src/airbrief_native"]

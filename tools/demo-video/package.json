@@ -1,0 +1,25 @@
+{
+  "name": "airbrief-demo-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Renders the AirBrief demo video from the running app: Playwright drives it, Kokoro speaks, FFmpeg joins.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "playwright install chromium",
+    "draft": "node record.mjs --draft",
+    "video": "node record.mjs",
+    "scene": "node record.mjs --only",
+    "teaser": "node record.mjs --story teaser",
+    "teaser:draft": "node record.mjs --story teaser --draft",
+    "verify": "node verify.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "kokoro-js": "^1.2.0",
+    "playwright": "^1.48.0"
+  }
+}

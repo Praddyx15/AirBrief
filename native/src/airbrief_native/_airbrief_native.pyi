@@ -1,0 +1,9 @@
+"""Type stubs for the compiled AirBrief kernel."""
+
+from typing import Any
+
+__version__: str
+
+def min_separation_frames(positions: Any, active: Any) -> tuple[list[float], list[int], list[int]]: ...
+def pairs_within(positions: Any, active: Any, threshold: float) -> list[tuple[int, int, int, float]]: ...
+def points_in_polygon(xs: Any, ys: Any, ring_x: Any, ring_y: Any) -> list[bool]: ...

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+<name>Mixed features</name>
+<description>A point, a line and a polygon with a hole in nested folders.</description>
+<Folder><name>Survey</name>
+<Folder><name>Points</name>
+<Placemark><name>GNSS base station</name><ExtendedData><Data name="kind"><value>base_station</value></Data><Data name="antenna_height_m"><value>1.80</value></Data><Data name="surveyor"><value>Field team 2</value></Data></ExtendedData><Point><coordinates>77.599617450,12.976084690</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>Lines</name>
+<Placemark><name>Access track</name><ExtendedData><Data name="kind"><value>track</value></Data><Data name="surface"><value>gravel</value></Data></ExtendedData><LineString><tessellate>1</tessellate><coordinates>77.598234931,12.973192162 77.600539154,12.973915305 77.603304226,12.973372949</coordinates></LineString></Placemark>
+</Folder>
+<Folder><name>Areas</name>
+<Placemark><name>Survey block with pond</name><ExtendedData><Data name="kind"><value>survey_block</value></Data><Data name="priority"><value>high</value></Data><Data name="note"><value>Pond excluded (inner ring)</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>77.601000000,12.975000000 77.603765089,12.974999985 77.603765109,12.976807809 77.601000000,12.976807823 77.601000000,12.975000000</coordinates></LinearRing></outerBoundaryIs><innerBoundaryIs><LinearRing><coordinates>77.601921698,12.975542345 77.601921701,12.976265475 77.602843402,12.976265470 77.602843397,12.975542340 77.601921698,12.975542345</coordinates></LinearRing></innerBoundaryIs></Polygon></Placemark>
+</Folder>
+</Folder>
+</Document>
+</kml>

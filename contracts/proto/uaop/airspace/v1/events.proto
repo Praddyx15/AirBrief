@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+// Events AirBrief publishes when an analysis finishes, for UAOP's event bus.
+//
+// Every event carries a `schema` string of the form "uaop.event.airspace.<name>/<major>":
+//
+//   AirspaceAssessmentCompleted  "uaop.event.airspace.assessment_completed/1"
+//   FlightAuditCompleted         "uaop.event.airspace.flight_audit_completed/1"
+//
+// Consumers dispatch on `schema`. The major number changes only on a breaking change; additive
+// fields keep the same schema string. The same strings are used as the subject/topic suffix
+// when the events are published (for example over NATS).
+package uaop.airspace.v1;
+
+import "google/protobuf/timestamp.proto";
+import "uaop/airspace/v1/airspace.proto";
+
+// Published when an airspace assessment completes.
+message AirspaceAssessmentCompleted {
+  // Always "uaop.event.airspace.assessment_completed/1".
+  string schema = 1;
+  // Unique id of this event (UUID).
+  string event_id = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  // AirBrief analysis id (UUID).
+  string analysis_id = 4;
+  // Dataset the geometry came from, when the analysis was run on an upload.
+  optional string dataset_id = 5;
+  AirspaceAssessment assessment = 6;
+  // SHA-256 (hex) of the operation evidence brief the assessment was issued in, when a brief was
+  // built (Python: Brief.provenance.brief_sha256, canonical JSON without generated_utc). Lets UAOP
+  // tie the event to the bundle an operator filed. Absent when no brief was built.
+  optional string brief_sha256 = 7;
+}
+
+// Published when a FlightMD flight audit completes.
+message FlightAuditCompleted {
+  // Always "uaop.event.airspace.flight_audit_completed/1".
+  string schema = 1;
+  // Unique id of this event (UUID).
+  string event_id = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  // AirBrief analysis id (UUID).
+  string analysis_id = 4;
+  FlightAuditSummary summary = 5;
+}

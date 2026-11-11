@@ -1,0 +1,683 @@
+syntax = "proto3";
+
+// AirBrief analysis contracts for UAOP.
+//
+// AirBrief supplies evidence and geodata; UAOP's mission and compliance engines make decisions.
+// These messages are a stable, compact subset of the Pydantic result models in
+// airbrief_core/models/analyses.py. The full results (including GeoJSON layers) remain available
+// as JSON through the AnalysisEnvelope (schema_version "1.0").
+//
+// Units: metres, square metres, seconds, metres per second, degrees. Coordinates are WGS84.
+// Geometries travel as GeoJSON text in fields ending in "_geojson".
+package uaop.airspace.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================================
+// Shared enums
+// ============================================================================================
+
+// Overall outcome of an analysis.
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_PASS = 1;
+  VERDICT_CAUTION = 2;
+  VERDICT_FAIL = 3;
+}
+
+// Illustrative airspace zone colour.
+enum ZoneKind {
+  ZONE_KIND_UNSPECIFIED = 0;
+  ZONE_KIND_GREEN = 1;
+  ZONE_KIND_YELLOW = 2;
+  ZONE_KIND_RED = 3;
+}
+
+// Where a zone came from.
+enum ZoneSource {
+  ZONE_SOURCE_UNSPECIFIED = 0;
+  // Ring around an aerodrome, from the configurable zone rules.
+  ZONE_SOURCE_AERODROME = 1;
+  // Supplied by the user with the request.
+  ZONE_SOURCE_USER = 2;
+  // Shipped in the data pack (zones.geojson).
+  ZONE_SOURCE_DATAPACK = 3;
+}
+
+// Severity of a non-fatal issue.
+enum IssueSeverity {
+  ISSUE_SEVERITY_UNSPECIFIED = 0;
+  ISSUE_SEVERITY_INFO = 1;
+  ISSUE_SEVERITY_WARNING = 2;
+  ISSUE_SEVERITY_CRITICAL = 3;
+}
+
+// Implementation that computed the result.
+enum ComputeBackend {
+  COMPUTE_BACKEND_UNSPECIFIED = 0;
+  COMPUTE_BACKEND_PYTHON = 1;
+  COMPUTE_BACKEND_CPP = 2;
+}
+
+// How the ground-risk footprint buffer is derived.
+enum BufferRule {
+  BUFFER_RULE_UNSPECIFIED = 0;
+  // Buffer equals the flight altitude.
+  BUFFER_RULE_ONE_TO_ONE = 1;
+  // Buffer equals v * sqrt(2h / g).
+  BUFFER_RULE_BALLISTIC = 2;
+}
+
+// Statistic of sampled population density used for the iGRC row.
+enum DensityStatistic {
+  DENSITY_STATISTIC_UNSPECIFIED = 0;
+  DENSITY_STATISTIC_MAX = 1;
+  // 95th percentile.
+  DENSITY_STATISTIC_P95 = 2;
+}
+
+// Altitude calibration for the flight audit.
+enum AltitudeCalibration {
+  ALTITUDE_CALIBRATION_UNSPECIFIED = 0;
+  // Offset the track so the takeoff point sits on the terrain.
+  ALTITUDE_CALIBRATION_TAKEOFF = 1;
+  // Use the logged altitude as-is.
+  ALTITUDE_CALIBRATION_NONE = 2;
+}
+
+// Reference actually used for heights above ground in the flight audit.
+enum AltitudeReference {
+  ALTITUDE_REFERENCE_UNSPECIFIED = 0;
+  ALTITUDE_REFERENCE_TERRAIN_CALIBRATED = 1;
+  ALTITUDE_REFERENCE_TERRAIN_RAW = 2;
+  // No DEM available: heights are relative to takeoff.
+  ALTITUDE_REFERENCE_TAKEOFF_RELATIVE = 3;
+  // Planned heights: above the take-off point, or above mean sea level (Python
+  // height_reference "takeoff" / "amsl"; "agl" maps to ALTITUDE_REFERENCE_TERRAIN_RAW).
+  ALTITUDE_REFERENCE_ABOVE_TAKEOFF = 4;
+  ALTITUDE_REFERENCE_AMSL = 5;
+}
+
+// ============================================================================================
+// Shared fragments
+// ============================================================================================
+
+// Where and how a result was produced.
+message AnalysisProvenance {
+  // AirBrief result schema version, e.g. "1.0".
+  string schema_version = 1;
+  // AirBrief package version, e.g. "0.1.0".
+  string airbrief_version = 2;
+  // Data pack name, e.g. "bengaluru" or "demo"; empty when none was used.
+  optional string datapack = 3;
+  // True when the data pack is the synthetic demo pack (never use for real decisions).
+  bool datapack_synthetic = 4;
+  ComputeBackend backend = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp finished_at = 7;
+  int64 duration_ms = 8;
+}
+
+// A non-fatal problem or note.
+message Issue {
+  string code = 1;
+  string message = 2;
+  IssueSeverity severity = 3;
+  optional int32 feature_index = 4;
+}
+
+// A zone touched by the analysed geometry or flight (Python: ZoneHit).
+message ZoneHit {
+  ZoneSource source = 1;
+  string name = 2;
+  // Aerodrome ident (ICAO or local) when the zone comes from an aerodrome rule.
+  optional string ident = 3;
+  ZoneKind zone = 4;
+  // Ring label, e.g. "0-8 km: controlled, permission required".
+  optional string ring = 5;
+  // Free-flight ceiling above ground; absent when permission is required.
+  optional double ceiling_agl_m = 6;
+  bool permission_required = 7;
+  optional double distance_km = 8;
+  optional double overlap_area_sq_m = 9;
+  optional double overlap_length_m = 10;
+  // First track or vertex index inside the zone (flight audit).
+  optional int32 first_index = 11;
+  optional string note = 12;
+  // Zone engine v2. Absent active: no planned window was given.
+  optional bool active = 13;
+  google.protobuf.Timestamp valid_from = 14;
+  google.protobuf.Timestamp valid_to = 15;
+  // Free-flight ceiling (or the zone's lower limit) minus the planned height above ground.
+  optional double agl_margin_m = 16;
+  // "rule", or "verify_official_map" for a band the published rule does not define.
+  optional string basis = 17;
+  // How an aerodrome band was measured: "perimeter", "runway_hull" or "reference_point".
+  optional string distance_from = 18;
+  optional string inactive_reason = 19;
+}
+
+// Nearest aerodrome to the analysed geometry (Python: NearestAerodrome).
+message NearestAerodrome {
+  string ident = 1;
+  string name = 2;
+  // OurAirports type, e.g. "large_airport".
+  string type = 3;
+  double lon = 4;
+  double lat = 5;
+  double distance_km = 6;
+  double bearing_deg = 7;
+  optional double elevation_m = 8;
+  // Whether the zone rules applied its bands (absent: no rule for its type).
+  optional bool operational = 9;
+  optional bool scheduled_service = 10;
+}
+
+// ============================================================================================
+// Results
+// ============================================================================================
+
+// Airspace and terrain assessment (subset of Python AirspaceResult).
+message AirspaceAssessment {
+  Verdict verdict = 1;
+  string summary = 2;
+  string geometry_type = 3;
+  optional double area_sq_m = 4;
+  optional double length_m = 5;
+  double altitude_agl_m = 6;
+  // Lowest ceiling of the zones touched; absent when unlimited by zones.
+  optional double effective_ceiling_agl_m = 7;
+  bool permission_required = 8;
+  optional double max_terrain_m = 9;
+  optional double max_altitude_amsl_m = 10;
+  repeated NearestAerodrome nearest_aerodromes = 11;
+  repeated ZoneHit zones = 12;
+  // Number of obstacles within the search radius and how many conflict with the altitude.
+  int32 obstacle_count = 13;
+  int32 obstacle_conflict_count = 14;
+  // Flyability grid summary (H3).
+  optional int32 grid_resolution = 15;
+  int32 grid_cell_count = 16;
+  bool grid_truncated = 17;
+  repeated Issue issues = 18;
+  string disclaimer = 19;
+  AnalysisProvenance provenance = 20;
+  // False when aerodrome zones were not checked (no data pack covers the area, the pack has no
+  // aerodrome layer, or the geometry lies outside it): the verdict is then never PASS and an
+  // issue "not_assessed" says why. Absent from older producers: treat as true.
+  optional bool assessment_complete = 21;
+  // Terrain-true heights (Python: height_reference and the fields after it). altitude_agl_m is
+  // the planned value read in height_reference; the AGL range is along the flight.
+  AltitudeReference height_reference = 22;
+  optional double min_agl_m = 23;
+  optional double takeoff_lon_deg = 24;
+  optional double takeoff_lat_deg = 25;
+  optional double takeoff_elevation_m = 26;
+  optional double flight_level_amsl_m = 27;
+  optional double agl_min_m = 28;
+  optional double agl_max_m = 29;
+  // Total length of the route below min_agl_m and above the free-flight ceiling.
+  optional double below_min_agl_length_m = 30;
+  optional double above_ceiling_length_m = 31;
+  // False when a take-off/AMSL plan could not be related to the ground (no DEM). Absent: true.
+  optional bool heights_assessed = 32;
+  // How the data-pack DEM is described (e.g. "Copernicus GLO-30 surface model — includes roofs and canopy").
+  optional string dem_caveat = 33;
+  // Zone engine v2: the rule set ("dgca_2021", "conservative_illustrative", "custom"; absent:
+  // stored before profiles), the aerodrome bands reached and the zones that did not apply.
+  optional string zone_profile = 34;
+  repeated BandEvidence band_evidence = 35;
+  repeated ZoneHit inactive_zones = 36;
+  // "Red zones are not published as open data … verify on Digital Sky", with the rule set.
+  optional string assessment_banner = 37;
+}
+
+// One aerodrome band (or "elsewhere") the flight reaches (Python: BandEvidence).
+message BandEvidence {
+  optional string ident = 1;
+  string name = 2;
+  string band = 3;
+  double inner_km = 4;
+  double outer_km = 5;
+  ZoneKind zone = 6;
+  bool permission_required = 7;
+  string basis = 8;
+  optional string distance_from = 9;
+  optional double ceiling_agl_m = 10;
+  optional double worst_agl_m = 11;
+  optional double agl_margin_m = 12;
+  int32 samples = 13;
+  string sample_kind = 14;
+}
+
+// One high-density H3 cell in the ground-risk footprint (Python: DensityCell).
+message DensityHotspot {
+  string h3_cell = 1;
+  double lon = 2;
+  double lat = 3;
+  double density_per_sq_km = 4;
+  string band = 5;
+}
+
+// Ground-risk evidence for a SORA-style assessment (subset of Python GroundRiskResult).
+// This is evidence for the assessment, not the assessment itself.
+message GroundRiskEvidence {
+  // Illustrative intrinsic ground risk class; absent when outside the table's scope.
+  optional int32 igrc = 1;
+  bool in_scope = 2;
+  // True when the small-UAS rule (mass <= 0.25 kg and speed <= 25 m/s) applied.
+  bool small_uas_rule = 3;
+  // Table column label, e.g. "1 m / 25 m/s".
+  string column = 4;
+  // Table row label, e.g. "< 5,000 people/km2".
+  string density_band = 5;
+  DensityStatistic density_statistic = 6;
+  double max_density_per_sq_km = 7;
+  // 95th percentile density.
+  double high_percentile_density_per_sq_km = 8;
+  double mean_density_per_sq_km = 9;
+  double population_in_footprint = 10;
+  double footprint_area_sq_km = 11;
+  double buffer_m = 12;
+  repeated DensityHotspot hotspots = 13;
+  string table_reference = 14;
+  string method = 15;
+  repeated Issue issues = 16;
+  string disclaimer = 17;
+  AnalysisProvenance provenance = 18;
+  // SORA 2.5 operational volume, adjacent area and assemblies; absent for results of the
+  // earlier footprint method (no flight geography / contingency volume).
+  OperationalVolume operational_volume = 19;
+}
+
+// One term of the SORA 2.5 contingency volume, ground risk buffer or adjacent-area distance
+// (Python: VolumeTerm).
+message VolumeTerm {
+  // Symbol, e.g. "S_GNSS", "S_CM", "H_CM", "S_GRB", "D_adj".
+  string name = 1;
+  string label = 2;
+  // "horizontal", "vertical", "buffer" or "adjacent".
+  string axis = 3;
+  double value_m = 4;
+  // The formula with its numbers, e.g. "S_R = v*t_R = 18 m/s x 1 s = 18 m" (UTF-8 in the API).
+  string formula = 5;
+  string source = 6;
+}
+
+// An outdoor assembly of people within 1 km of the operational volume (Python: AssemblyHit).
+message AssemblyEvidence {
+  string name = 1;
+  // "datapack" or "user".
+  string source = 2;
+  optional string kind = 3;
+  // Expected people (capacity tag or user entry); absent when unknown.
+  optional int64 capacity = 4;
+  // "lt_40k", "40k_400k", "gt_400k" or "unknown" (SORA 2.5 Tables 8-13 columns).
+  string band = 5;
+  // From the outer limit of the operational volume; 0 inside it.
+  double distance_m = 6;
+  double lon = 7;
+  double lat = 8;
+}
+
+// SORA 2.5 Step #2 / Step #8 evidence (Python: OperationalVolumeResult and the adjacent_* and
+// assemblies fields of GroundRiskResult). Evidence only: not a GRC, ARC or SAIL.
+message OperationalVolume {
+  double fg_height_m = 1;
+  // Contingency volume: horizontal size around the flight geography and its ceiling AGL.
+  double s_cv_m = 2;
+  double h_cv_m = 3;
+  // Ground risk buffer width beyond the contingency volume.
+  double grb_m = 4;
+  // Adjacent-area outer limit from the operational volume: clamp(v x 180 s, 5 km, 35 km).
+  double adjacent_outer_km = 5;
+  // Average density between the ground risk buffer edge and that limit; absent when not computed.
+  optional double adjacent_mean_density_per_sq_km = 6;
+  optional double adjacent_people = 7;
+  repeated AssemblyEvidence assemblies = 8;
+  repeated VolumeTerm terms = 9;
+  // Side of the square density grid cells (SORA 2.5 Table 4 by height, unless set or coarsened).
+  double grid_m = 10;
+  // Covered fraction (0..1) of the adjacent ring inside the data pack: the average density and
+  // people above describe that part only. Absent when the adjacent area was not computed.
+  optional double adjacent_coverage = 11;
+  // "one_to_one" (S_GRB = H_CV + c/2) or "ballistic" (S_GRB = v*sqrt(2*H_CV/g) + c/2).
+  string grb_rule = 12;
+  // Contingency manoeuvre family: "multirotor" (stop) or "fixed_wing" (turn).
+  string aircraft = 13;
+}
+
+// One stretch of a flight above the ceiling (Python: AuditExceedance).
+message FlightExceedance {
+  int32 start_index = 1;
+  int32 end_index = 2;
+  // Along-track distances, linearly interpolated at the ceiling crossings.
+  double start_distance_m = 3;
+  double end_distance_m = 4;
+  double length_m = 5;
+  double max_agl_m = 6;
+  double limit_m = 7;
+  string reason = 8;
+}
+
+// FlightMD flight airspace audit (subset of Python FlightAuditResult).
+message FlightAuditSummary {
+  Verdict verdict = 1;
+  // FlightMD report identity.
+  optional string report_id = 2;
+  optional string file_name = 3;
+  // FlightMD schema detected, e.g. "1.2" or "1.5".
+  optional string flightmd_schema_version = 4;
+  optional string flightmd_url = 5;
+  int32 points = 6;
+  AltitudeReference altitude_reference = 7;
+  optional double calibration_offset_m = 8;
+  double distance_m = 9;
+  double max_agl_m = 10;
+  double max_height_above_takeoff_m = 11;
+  double ceiling_agl_m = 12;
+  repeated FlightExceedance exceedances = 13;
+  repeated ZoneHit zones = 14;
+  // Unset when the data pack has no aerodromes.
+  NearestAerodrome nearest_aerodrome = 15;
+  optional double min_aerodrome_distance_km = 16;
+  optional double overflown_population = 17;
+  optional double max_density_per_sq_km = 18;
+  repeated Issue issues = 19;
+  string disclaimer = 20;
+  AnalysisProvenance provenance = 21;
+}
+
+// One loss of separation between two drones (Python: ShowConflict).
+message ShowConflict {
+  string drone_a = 1;
+  string drone_b = 2;
+  double start_s = 3;
+  double end_s = 4;
+  // Time of closest approach and the distance at that time.
+  double t_min_s = 5;
+  double min_distance_m = 6;
+}
+
+// Drone-show validation summary (subset of Python ShowResult).
+message ShowValidationSummary {
+  Verdict verdict = 1;
+  int32 drone_count = 2;
+  double duration_s = 3;
+  double sample_rate_hz = 4;
+  int32 frames_checked = 5;
+  optional double min_separation_m = 6;
+  optional double min_separation_at_s = 7;
+  repeated string min_separation_pair = 8;
+  int32 conflict_count = 9;
+  int32 violation_count = 10;
+  repeated ShowConflict conflicts = 11;
+  bool events_truncated = 12;
+  repeated Issue issues = 13;
+  AnalysisProvenance provenance = 14;
+}
+
+// Survey effort estimate (subset of Python SurveyResult). Never contains waypoints.
+message SurveyEstimate {
+  string camera_name = 1;
+  double gsd_cm = 2;
+  double altitude_agl_m = 3;
+  double footprint_across_m = 4;
+  double footprint_along_m = 5;
+  double line_spacing_m = 6;
+  double trigger_distance_m = 7;
+  double trigger_interval_s = 8;
+  double direction_deg = 9;
+  int32 line_count = 10;
+  double line_km = 11;
+  int32 photos = 12;
+  double flight_minutes = 13;
+  int32 batteries = 14;
+  double total_minutes = 15;
+  double area_ha = 16;
+  double ha_per_hour = 17;
+  int32 block_count = 18;
+  repeated Issue issues = 19;
+  AnalysisProvenance provenance = 20;
+  // Survey upgrades (Python: mode, coverage, heights, transit, GCP, storage, spray). Effort
+  // evidence only: the lines stay a visual aid. gsd_cm and the camera fields are 0 when spraying.
+  optional string mode = 21;
+  optional string coverage = 22;
+  AltitudeReference height_reference = 23;
+  optional double gsd_min_cm = 24;
+  optional double gsd_max_cm = 25;
+  optional double relief_m = 26;
+  optional double worst_side_overlap_pct = 27;
+  optional double worst_front_overlap_pct = 28;
+  optional double transit_km = 29;
+  optional int32 gcp_count = 30;
+  optional double storage_gb = 31;
+  optional double spray_litres = 32;
+  optional int32 spray_tank_loads = 33;
+  optional int32 spray_sorties = 34;
+}
+
+// A power or communication feature near the analysed geometry (Python: EmiItem). Proximity
+// evidence, not an interference prediction.
+message EmiProximity {
+  // "power_line", "minor_line", "cable", "substation", "plant", "comm_tower", "mast" or "pylon".
+  string kind = 1;
+  optional string name = 2;
+  // Largest voltage of the OSM "voltage" tag; absent when untagged.
+  optional double voltage_kv = 3;
+  // 0 when the feature touches, crosses or lies inside the geometry.
+  double distance_m = 4;
+  // Point of the feature nearest to the geometry.
+  double lon = 5;
+  double lat = 6;
+}
+
+// Sun, daylight-profile, magnetic-field, wind and interference-proximity evidence for an
+// operation (subset of Python EnvironmentResult). Facts and margins only, never a go/no-go.
+// Instants are UTC; utc_offset_min only labels the local times shown to people.
+message EnvironmentEvidence {
+  // Local date, "YYYY-MM-DD".
+  string date = 1;
+  // Minutes east of UTC of the local times.
+  int32 utc_offset_min = 2;
+  // Sun events (geometric elevation -0.833° and -6°); unset on polar days and nights.
+  google.protobuf.Timestamp sunrise = 3;
+  google.protobuf.Timestamp sunset = 4;
+  google.protobuf.Timestamp civil_dawn = 5;
+  google.protobuf.Timestamp civil_dusk = 6;
+  google.protobuf.Timestamp solar_noon = 7;
+  bool polar_day = 8;
+  bool polar_night = 9;
+  double max_sun_elevation_deg = 10;
+  // "india_daylight", "faa_107" or "custom".
+  string daylight_profile = 11;
+  // Minutes of the planned window outside the profile and in civil twilight with lighting
+  // required; absent without a planned window.
+  optional double window_minutes_outside = 12;
+  optional double window_minutes_lighting = 13;
+  // World Magnetic Model at the evaluation point (east and down positive).
+  double declination_deg = 14;
+  double inclination_deg = 15;
+  double horizontal_intensity_nt = 16;
+  double total_intensity_nt = 17;
+  // e.g. "WMM2025".
+  string magnetic_model = 18;
+  // Horizontal intensity below 2000 nT (blackout) or 6000 nT (caution).
+  bool magnetic_blackout = 19;
+  bool magnetic_caution = 20;
+  // Power-law estimate at the planned height and its margin to the rated limit (limit minus
+  // estimate); absent without a surface wind or a limit.
+  optional double wind_at_height_ms = 21;
+  optional double gust_at_height_ms = 22;
+  optional double wind_margin_ms = 23;
+  repeated EmiProximity emi = 24;
+  // False when no data pack covered the area or the check was switched off.
+  bool emi_assessed = 25;
+  repeated Issue issues = 26;
+  string disclaimer = 27;
+  AnalysisProvenance provenance = 28;
+}
+
+// One pilot, visual observer or ground station of a line-of-sight check (Python: LosObserver).
+message LineOfSightViewpoint {
+  string name = 1;
+  // "pilot", "observer" or "gcs".
+  string role = 2;
+  double lon = 3;
+  double lat = 4;
+  // Eye or antenna height above the ground.
+  double height_agl_m = 5;
+  // DEM (surface model) height at the position, above sea level.
+  optional double ground_m = 6;
+  // Share of the operation area seen at the target height; absent without DEM data.
+  optional double visible_pct = 7;
+  // Farthest seen area cell (horizontal).
+  optional double max_visible_m = 8;
+  // Effective Earth-radius factor used: 7/6 for pilots and observers, 4/3 for ground stations.
+  double k_factor = 9;
+  // "visual" (pilot, observer) or "radio" (ground station).
+  string los_kind = 10;
+  // Placed by the analysis because no pilot or observer was given.
+  bool assumed = 11;
+}
+
+// One C2 radio path profile, summarised (Python: LosRadioPath). Geometry only: not a link budget.
+message RadioPathEvidence {
+  string from_name = 1;
+  string to_name = 2;
+  double to_lon = 3;
+  double to_lat = 4;
+  // Horizontal and slant (antenna to antenna) distances.
+  double distance_m = 5;
+  double slant_m = 6;
+  // Free-space path loss over the slant distance: 20*log10(d_km) + 20*log10(f_MHz) + 32.44.
+  double fspl_db = 7;
+  // Worst clearance of the first Fresnel zone, (LOS - surface)/r1, and its distance from the
+  // station; absent without terrain data.
+  optional double worst_clearance_pct = 8;
+  optional double worst_at_m = 9;
+  double max_fresnel_radius_m = 10;
+  // Terrain or an obstacle cuts the straight line (clearance below 0 %).
+  bool los_blocked = 11;
+  // Clearance below the required share somewhere along the path.
+  bool below_threshold = 12;
+}
+
+// Line-of-sight evidence: terrain viewshed of the operation from the pilot, observers and ground
+// station, and C2 radio path clearance (subset of Python LineOfSightResult). Geometric evidence
+// only: not a VLOS approval, link budget or coverage prediction. The visible/hidden areas are in
+// the JSON result's GeoJSON layers.
+message LineOfSightEvidence {
+  double target_height_agl_m = 1;
+  repeated LineOfSightViewpoint viewpoints = 2;
+  // Share of the operation area seen by at least one pilot or observer.
+  optional double combined_visible_pct = 3;
+  // Share in radio line of sight of the ground station (else the pilot); absent without the radio check.
+  optional double radio_los_pct = 4;
+  optional double largest_hidden_patch_sq_m = 5;
+  // Routes only: the share of the length seen and the longest continuous seen stretch.
+  optional double route_visible_pct = 6;
+  optional double max_continuous_visible_m = 7;
+  // Viewshed grid cell (after any coarsening to 400 x 400 cells).
+  double grid_m = 8;
+  bool grid_coarsened = 9;
+  // Radio check: carrier frequency and required first Fresnel zone clearance; absent when off.
+  optional double frequency_mhz = 10;
+  optional double fresnel_clearance_threshold_pct = 11;
+  repeated RadioPathEvidence radio_paths = 12;
+  // Non-regulatory VLOS distance guidance (air-line) and its basis: "easa_alos_dlos" or
+  // "uk_caa_500m"; the share of the area beyond it from every pilot and observer.
+  double vlos_guidance_m = 13;
+  string vlos_guidance_basis = 14;
+  optional double beyond_guidance_pct = 15;
+  repeated Issue issues = 16;
+  string disclaimer = 17;
+  AnalysisProvenance provenance = 18;
+}
+
+// ============================================================================================
+// Service
+// ============================================================================================
+
+// Analysis RPCs that UAOP can call on an AirBrief deployment.
+service AirspaceAnalysisService {
+  // Zones, aerodromes, terrain and obstacles for a planned area or route.
+  rpc AssessAirspace(AssessAirspaceRequest) returns (AssessAirspaceResponse);
+  // Population-density evidence for a SORA-style ground-risk assessment.
+  rpc GetGroundRiskEvidence(GetGroundRiskEvidenceRequest) returns (GetGroundRiskEvidenceResponse);
+  // Geo-audit of a flown track from a FlightMD report.
+  rpc AuditFlight(AuditFlightRequest) returns (AuditFlightResponse);
+}
+
+// A zone supplied with a request (Python: UserZone).
+message RequestZone {
+  string name = 1;
+  ZoneKind zone = 2;
+  string geometry_geojson = 3;
+  optional double ceiling_agl_m = 4;
+  optional string note = 5;
+}
+
+message AssessAirspaceRequest {
+  // GeoJSON geometry (Polygon, LineString, Point or Multi*) in WGS84.
+  string geometry_geojson = 1;
+  // Planned altitude above ground; 0 means the default (120 m).
+  double altitude_agl_m = 2;
+  repeated RequestZone user_zones = 3;
+  // Preferred data pack name; empty selects by coverage.
+  optional string datapack = 4;
+  // Compute the H3 flyability grid.
+  bool include_grid = 5;
+  // H3 resolution 6..11; 0 means the default (9).
+  int32 h3_resolution = 6;
+}
+
+message AssessAirspaceResponse {
+  string analysis_id = 1;
+  AirspaceAssessment assessment = 2;
+  // Result layers by key (input, zones, obstacles) as GeoJSON FeatureCollection text.
+  map<string, string> layers_geojson = 3;
+}
+
+message GetGroundRiskEvidenceRequest {
+  // GeoJSON geometry in WGS84.
+  string geometry_geojson = 1;
+  double max_dimension_m = 2;
+  double max_speed_ms = 3;
+  optional double takeoff_mass_kg = 4;
+  double altitude_agl_m = 5;
+  BufferRule buffer_rule = 6;
+  DensityStatistic density_statistic = 7;
+  bool controlled_ground_area = 8;
+  // H3 resolution 6..10; 0 means the default (8).
+  int32 h3_resolution = 9;
+  optional string datapack = 10;
+}
+
+message GetGroundRiskEvidenceResponse {
+  string analysis_id = 1;
+  GroundRiskEvidence evidence = 2;
+  // Result layers by key (input, footprint) as GeoJSON FeatureCollection text.
+  map<string, string> layers_geojson = 3;
+}
+
+message AuditFlightRequest {
+  // The FlightMD report, either inline or by URL (https, public hosts only).
+  oneof report_source {
+    string report_json = 1;
+    string report_url = 2;
+  }
+  // Ceiling above ground; 0 means the default (120 m).
+  double ceiling_agl_m = 3;
+  AltitudeCalibration calibration = 4;
+  bool use_terrain = 5;
+  repeated RequestZone user_zones = 6;
+  optional string datapack = 7;
+}
+
+message AuditFlightResponse {
+  string analysis_id = 1;
+  FlightAuditSummary summary = 2;
+  // Result layers by key (path, exceedances, home) as GeoJSON FeatureCollection text.
+  map<string, string> layers_geojson = 3;
+}

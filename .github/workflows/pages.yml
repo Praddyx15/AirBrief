@@ -1,0 +1,94 @@
+name: Pages (static demo)
+
+# Builds the read-only demo: the synthetic data pack + every sample run through the API,
+# exported as static JSON, and the frontend built in static-export mode. No backend at runtime.
+#
+# One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: sqlite:///./data/airbrief.db
+      DATA_DIR: ./data
+      UPLOAD_DIR: ./data/uploads
+      DATAPACK_DIR: ./data/datapacks
+      DEFAULT_DATAPACK: demo
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements/constraints.txt
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[api]" -c requirements/constraints.txt
+
+      - name: Seed the synthetic data pack
+        run: |
+          mkdir -p data
+          python -m seed.datapack --synthetic --name demo
+
+      - name: Export demo JSON
+        run: python -m seed.demo_export --out frontend/public/demo
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Install frontend packages
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build static export
+        working-directory: frontend
+        env:
+          NEXT_OUTPUT: export
+          NEXT_PUBLIC_DEMO: "1"
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          npm run build
+          touch out/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: frontend/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # only the job that publishes gets to write to Pages
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

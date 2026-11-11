@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+<name>1 km square at the equator</name>
+<Placemark><name>1 km square at the equator</name><description>Corners laid out at ±500 m on a Lambert Azimuthal Equal-Area projection centred on (0, 0) and stored as lon/lat. Expected area 1,000,000 m².</description><ExtendedData><Data name="side_m"><value>1000</value></Data><Data name="expected_area_m2"><value>1000000</value></Data><Data name="expected_perimeter_m"><value>4000</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-0.004491576,-0.004521847 0.004491576,-0.004521847 0.004491576,0.004521847 -0.004491576,0.004521847 -0.004491576,-0.004521847</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+</Document>
+</kml>

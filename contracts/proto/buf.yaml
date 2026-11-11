@@ -1,0 +1,11 @@
+# buf v2 configuration for the AirBrief contracts.
+# Run from this directory: `buf lint` and `buf build`.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

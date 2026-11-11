@@ -1,0 +1,145 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airbrief-core"
+version = "0.1.0"
+description = "Geospatial intelligence for low-altitude airspace: CRS-correct measurement, airspace, ground risk, eVTOL, drone shows, survey and flight audit."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "AirBrief contributors" }]
+requires-python = ">=3.11"
+keywords = ["geospatial", "gis", "uav", "drones", "evtol", "airspace", "h3", "shapefile", "kml"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.5,<3",
+    "numpy>=1.24",
+    "shapely>=2.0.2,<3",
+    "pyproj>=3.6",
+    "pyshp>=2.3",
+    "lxml>=4.9",
+    "rasterio>=1.3.9",
+    "h3>=4.1,<5",
+    "networkx>=3.1",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.110,<1",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0.25,<3",
+    "alembic>=1.13",
+    "python-multipart>=0.0.9",
+    "pydantic-settings>=2.1",
+    "cryptography>=43",
+]
+postgres = [
+    "psycopg[binary]>=3.1",
+]
+signing = [
+    "cryptography>=43",
+]
+flightmd = [
+    # a commit, not a branch: FlightMD main as of 2026-10-19
+    "flightmd-core @ git+https://github.com/Praddyx15/FlightMD.git@306d0cb984e16c70cd178a0e50d2dedbec36126c",
+]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "hypothesis>=6.100",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/Praddyx15/AirBrief"
+Documentation = "https://github.com/Praddyx15/AirBrief/blob/main/RUNBOOK.md"
+Issues = "https://github.com/Praddyx15/AirBrief/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["airbrief_core*"]
+
+[tool.setuptools.package-data]
+airbrief_core = ["py.typed", "data/wmm/*.COF"]
+
+# --------------------------------------------------------------------------------------
+# Ruff
+# --------------------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["frontend", "native/build", "data", "samples", ".venv", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+"alembic/versions/*" = ["E", "W"]
+
+# --------------------------------------------------------------------------------------
+# mypy
+# --------------------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy"]
+exclude = ["^frontend/", "^native/build/", "^alembic/versions/", "^build/"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --------------------------------------------------------------------------------------
+# pytest
+# --------------------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "native: needs the optional C++ kernel (airbrief_native); run with -m native",
+    "network: touches the network; never run in the default suite",
+    "slow: long-running test (property sweeps, large fixtures)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:rasterio.*",
+    # Starlette's TestClient now prefers the httpx2 package; httpx still works for the tests.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.coverage.run]
+source = ["airbrief_core", "api"]
+branch = true
+omit = ["alembic/*", "tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+]

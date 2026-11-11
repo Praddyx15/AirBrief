@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+<name>Climbing line</name>
+<Placemark><name>Climb 0 to 100 m</name><description>1,000 m west-to-east line climbing from 0 to 100 m above ground.</description><ExtendedData><Data name="expected_length_2d_m"><value>1000.00</value></Data><Data name="expected_length_3d_m"><value>1004.99</value></Data></ExtendedData><LineString><altitudeMode>relativeToGround</altitudeMode><coordinates>77.589991581,12.971599959,0.000 77.599208419,12.971599959,100.000</coordinates></LineString></Placemark>
+</Document>
+</kml>

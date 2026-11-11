@@ -1,0 +1,12 @@
+# gitleaks' own rules, minus two false positives of its generic-api-key rule:
+# data-source names (key="copernicus_glo30") and sample names passed next to api_client in tests.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Data-source and sample names, not credentials"
+regexTarget = "line"
+regexes = [
+  '''key="copernicus_glo(30|90)"''',
+  '''load_sample\(api_client, "[a-z0-9_]+"\)''',
+]
