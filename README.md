@@ -12,6 +12,12 @@ It never says go or no-go. It gathers the evidence; the pilot and the authority 
 
 ![The airspace check for a survey area near Bengaluru](docs/images/airspace.jpg)
 
+## A 1-min tour:
+
+https://github.com/user-attachments/assets/cb140920-403c-4243-8ea9-aa8c042e19e8
+
+
+
 ## What it checks
 
 | | |
